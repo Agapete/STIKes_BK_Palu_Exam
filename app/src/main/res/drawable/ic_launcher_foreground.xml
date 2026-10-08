@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Center Safe Zone Shield Silhouette (54,54 center) -->
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M54,23 L79,33 C79,59 66,74 54,84 C42,74 29,59 29,33 Z" />
+    
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,26 L76,35 C76,57 64,71 54,80 C44,71 32,57 32,35 Z" />
+
+    <!-- Academic Mortarboard / Graduation Cap Top -->
+    <path
+        android:fillColor="#1E3A8A"
+        android:pathData="M54,36 L40,43 L54,50 L68,43 Z" />
+    <!-- Tassel -->
+    <path
+        android:fillColor="#F59E0B"
+        android:pathData="M40,43 L38,47 L41,47 Z" />
+    <!-- Cap Base -->
+    <path
+        android:fillColor="#1D4ED8"
+        android:pathData="M47,48.5 L47,54 C47,56.5 61,56.5 61,54 L61,48.5 L54,52 Z" />
+
+    <!-- Security Padlock glyph below cap -->
+    <path
+        android:fillColor="#1E293B"
+        android:pathData="M48,60 C48,56.7 60,56.7 60,60 L60,62 L48,62 Z" />
+    <path
+        android:fillColor="#F59E0B"
+        android:pathData="M45,62 L63,62 C64.1,62 65,62.9 65,64 L65,72 C65,73.1 64.1,74 63,74 L45,74 C43.9,74 43,73.1 43,72 L43,64 C43,62.9 43.9,62 45,62 Z" />
+    <!-- Lock Keyhole -->
+    <path
+        android:fillColor="#78350F"
+        android:pathData="M54,65 C53.2,65 52.5,65.7 52.5,66.5 C52.5,67.1 52.9,67.6 53.4,67.8 L53,70.5 L55,70.5 L54.6,67.8 C55.1,67.6 55.5,67.1 55.5,66.5 C55.5,65.7 54.8,65 54,65 Z" />
+</vector>

@@ -1,0 +1,6 @@
+{
+  "name": "CampusExam",
+  "description": "Platform Ujian Online Android BYOD dengan Anti-Cheating, Lockdown Mode, dan Web Monitoring Dosen.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

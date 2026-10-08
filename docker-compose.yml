@@ -1,0 +1,58 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: campusexam-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-campusexam_db}
+      POSTGRES_USER: ${POSTGRES_USER:-campusexam_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Secur3DbP@ss2026!}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: campusexam-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: campusexam-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-campusexam_user}:${POSTGRES_PASSWORD:-Secur3DbP@ss2026!}@postgres:5432/${POSTGRES_DB:-campusexam_db}
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-98fbc127d4983a8123bfde4421}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-bbfa2419082348aed7812}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+    ports:
+      - "3000:3000"
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: campusexam-web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+
+volumes:
+  pgdata:
