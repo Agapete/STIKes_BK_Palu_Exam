@@ -31,10 +31,20 @@ import com.example.ui.theme.*
 
 @Composable
 fun LoginScreen(viewModel: ExamViewModel) {
+    var isRegisterMode by remember { mutableStateOf(false) }
+
+    // Login Form State
     var username by remember { mutableStateOf("202400101") }
-    var password by remember { mutableStateOf("PasswordMhs123!") }
-    var selectedRole by remember { mutableStateOf(UserRole.STUDENT) }
+    var password by remember { mutableStateOf("stikesbk123") }
+
+    // Register Form State
+    var regFullName by remember { mutableStateOf("") }
+    var regNim by remember { mutableStateOf("") }
+    var regStudyProgram by remember { mutableStateOf("D3 Keperawatan") }
+    var regClassName by remember { mutableStateOf("KLP-A") }
+
     val report by viewModel.deviceReport.collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     Scaffold(
         containerColor = Slate50
@@ -60,40 +70,18 @@ fun LoginScreen(viewModel: ExamViewModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text("Portal STIKES BK Palu Exam", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Slate900)
             Text(
-                "STIKes BK Palu",
+                if (isRegisterMode) "Pendaftaran Mahasiswa" else "Portal STIKES BK Palu Exam", 
+                fontSize = 22.sp, 
+                fontWeight = FontWeight.Bold, 
+                color = Slate900
+            )
+            Text(
+                if (isRegisterMode) "Lengkapi identitas untuk akun ujian" else "STIKes BK Palu",
                 fontSize = 13.sp,
                 color = Slate500,
                 modifier = Modifier.padding(top = 4.dp, bottom = 24.dp)
             )
-
-            // Role Switcher Segmented Control
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Slate200.copy(alpha = 0.6f)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    RolePill("Mahasiswa", selectedRole == UserRole.STUDENT, Modifier.weight(1f)) {
-                        selectedRole = UserRole.STUDENT
-                        username = "202400101"
-                    }
-                    RolePill("Dosen", selectedRole == UserRole.LECTURER, Modifier.weight(1f)) {
-                        selectedRole = UserRole.LECTURER
-                        username = "19800512"
-                    }
-                    RolePill("Admin", selectedRole == UserRole.ADMIN, Modifier.weight(1f)) {
-                        selectedRole = UserRole.ADMIN
-                        username = "admin_puskom"
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
 
             // Input Fields Card
             Card(
@@ -103,59 +91,200 @@ fun LoginScreen(viewModel: ExamViewModel) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
-                    Text(
-                        text = if (selectedRole == UserRole.STUDENT) "Nomor Induk Mahasiswa (NIM)" else "NIP / Username",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Slate700
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    OutlinedTextField(
-                        value = username,
-                        onValueChange = { username = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = Slate400) },
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp)
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = "Kata Sandi",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Slate700
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    OutlinedTextField(
-                        value = password,
-                        onValueChange = { password = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = Slate400) },
-                        visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp)
-                    )
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    Button(
-                        onClick = {
-                            viewModel.switchUserRole(selectedRole)
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary)
-                    ) {
-                        Text(
-                            text = if (selectedRole == UserRole.STUDENT) "Masuk Ujian Mahasiswa" else "Buka Dashboard Pengawas",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold
+                    if (isRegisterMode) {
+                        // REGISTRATION FORM
+                        Text("Nama Lengkap", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Slate700)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = regFullName,
+                            onValueChange = { regFullName = it },
+                            placeholder = { Text("Contoh: Siti Aminah", color = Slate400) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Slate900,
+                                unfocusedTextColor = Slate900,
+                                focusedBorderColor = NavyPrimary,
+                                unfocusedBorderColor = Slate300
+                            )
                         )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text("Nomor Induk Mahasiswa (NIM)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Slate700)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = regNim,
+                            onValueChange = { regNim = it },
+                            placeholder = { Text("Contoh: 202400199", color = Slate400) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Slate900,
+                                unfocusedTextColor = Slate900,
+                                focusedBorderColor = NavyPrimary,
+                                unfocusedBorderColor = Slate300
+                            )
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text("Program Studi", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Slate700)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = regStudyProgram,
+                            onValueChange = { regStudyProgram = it },
+                            placeholder = { Text("D3 Keperawatan / S1 Administrasi Kesehatan", color = Slate400) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Slate900,
+                                unfocusedTextColor = Slate900,
+                                focusedBorderColor = NavyPrimary,
+                                unfocusedBorderColor = Slate300
+                            )
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text("Kelas", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Slate700)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = regClassName,
+                            onValueChange = { regClassName = it },
+                            placeholder = { Text("Contoh: KLP-A", color = Slate400) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Slate900,
+                                unfocusedTextColor = Slate900,
+                                focusedBorderColor = NavyPrimary,
+                                unfocusedBorderColor = Slate300
+                            )
+                        )
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        Button(
+                            onClick = {
+                                if (regFullName.isBlank() || regNim.isBlank() || regStudyProgram.isBlank() || regClassName.isBlank()) {
+                                    android.widget.Toast.makeText(context, "Semua data pendaftaran wajib diisi!", android.widget.Toast.LENGTH_SHORT).show()
+                                    return@Button
+                                }
+                                viewModel.registerWithApi(regFullName, regNim, regStudyProgram, regClassName) { success, msg ->
+                                    android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
+                                    if (success) {
+                                        username = regNim
+                                        password = "stikesbk123"
+                                        isRegisterMode = false
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().height(50.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen)
+                        ) {
+                            Text("Daftar Sekarang", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        TextButton(
+                            onClick = { isRegisterMode = false },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Sudah punya akun? Masuk di sini", color = NavyPrimary, fontSize = 13.sp)
+                        }
+
+                    } else {
+                        // LOGIN FORM
+                        Text(
+                            text = "Nomor Induk Mahasiswa (NIM)",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Slate700
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = username,
+                            onValueChange = { username = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = Slate400) },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Slate900,
+                                unfocusedTextColor = Slate900,
+                                focusedBorderColor = NavyPrimary,
+                                unfocusedBorderColor = Slate300
+                            )
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = "Kata Sandi",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Slate700
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = password,
+                            onValueChange = { password = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = Slate400) },
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Slate900,
+                                unfocusedTextColor = Slate900,
+                                focusedBorderColor = NavyPrimary,
+                                unfocusedBorderColor = Slate300
+                            )
+                        )
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        Button(
+                            onClick = {
+                                if (username.isBlank() || password.isBlank()) {
+                                    android.widget.Toast.makeText(context, "Username dan password tidak boleh kosong!", android.widget.Toast.LENGTH_SHORT).show()
+                                    return@Button
+                                }
+                                viewModel.loginWithApi(username, password) { success, msg ->
+                                    if (!success) {
+                                        android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary)
+                        ) {
+                            Text(
+                                text = "Masuk Ujian Mahasiswa",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        TextButton(
+                            onClick = { isRegisterMode = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Belum punya akun? Daftar di sini", color = NavyPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        }
                     }
                 }
             }
@@ -200,7 +329,11 @@ fun StudentDashboardScreen(viewModel: ExamViewModel) {
     val user by viewModel.currentUser.collectAsState()
     val isOnline by viewModel.isOnline.collectAsState()
     val report by viewModel.deviceReport.collectAsState()
-    val exams = viewModel.exams
+    val exams by viewModel.exams.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.loadExams()
+    }
 
     Scaffold(
         containerColor = Slate50,
@@ -243,7 +376,7 @@ fun StudentDashboardScreen(viewModel: ExamViewModel) {
                 Column {
                     Text("Selamat datang,", fontSize = 13.sp, color = Slate500)
                     Text(user.fullName, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Slate900)
-                    Text("NIM: ${user.identifier} • ${user.className}", fontSize = 12.sp, color = NavyPrimary, fontWeight = FontWeight.SemiBold)
+                    Text("${user.studyProgram} • ${user.className} (NIM: ${user.identifier})", fontSize = 12.sp, color = NavyPrimary, fontWeight = FontWeight.SemiBold)
                 }
 
                 // Network simulation button
@@ -269,34 +402,7 @@ fun StudentDashboardScreen(viewModel: ExamViewModel) {
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Role Switcher Quick Pill (for review and testing)
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = SkyLight.copy(alpha = 0.15f)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.SupervisorAccount, contentDescription = null, tint = NavyPrimary, modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Mode Dosen & Admin Console", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = NavyPrimary)
-                    }
-                    TextButton(
-                        onClick = { viewModel.switchUserRole(UserRole.LECTURER) },
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
-                    ) {
-                        Text("Buka Console", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = NavyPrimary)
-                    }
-                }
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
 
             // Quick Stats Row
             Row(
@@ -309,7 +415,8 @@ fun StudentDashboardScreen(viewModel: ExamViewModel) {
                     subtitle = "Siap Dikerjakan",
                     icon = Icons.Default.PlayCircle,
                     accentColor = SuccessGreen,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    onClick = { viewModel.navigateTo(ScreenDestination.ExamList) }
                 )
                 StatCard(
                     title = "Mendatang",
@@ -317,14 +424,15 @@ fun StudentDashboardScreen(viewModel: ExamViewModel) {
                     subtitle = "Jadwal Minggu Ini",
                     icon = Icons.Default.Event,
                     accentColor = BlueAccent,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    onClick = { viewModel.navigateTo(ScreenDestination.ExamList) }
                 )
             }
 
             Spacer(modifier = Modifier.height(20.dp))
 
             // Active Exam Highlight Card
-            val activeExam = exams.find { it.status == ExamStatus.ACTIVE }
+            val activeExam = exams.find { it.status == ExamStatus.ACTIVE } ?: exams.firstOrNull()
             if (activeExam != null) {
                 Text("Ujian Aktif Sekarang", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Slate900)
                 Spacer(modifier = Modifier.height(10.dp))
@@ -390,6 +498,32 @@ fun StudentDashboardScreen(viewModel: ExamViewModel) {
                             Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Buka Ujian & Masuk Ruang Ujian", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            } else {
+                Text("Ujian Aktif Sekarang", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Slate900)
+                Spacer(modifier = Modifier.height(10.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp).fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("Belum ada ujian aktif yang tersinkronisasi.", fontSize = 13.sp, color = Slate700)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = { viewModel.loadExams() },
+                            colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Muat Ulang / Ambil Jadwal", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }

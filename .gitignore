@@ -17,3 +17,11 @@ local.properties
 .env
 debug.keystore
 node_modules/
+
+dist/
+web/dist/
+backend/dist/
+backend/.agents/
+backend/.claude/
+backend/.cursor/
+backend/.devin/

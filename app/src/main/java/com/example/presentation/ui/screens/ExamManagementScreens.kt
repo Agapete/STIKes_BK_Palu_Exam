@@ -30,12 +30,31 @@ import com.example.presentation.viewmodel.ExamViewModel
 import com.example.presentation.viewmodel.ScreenDestination
 import com.example.ui.theme.*
 
+import androidx.activity.compose.BackHandler
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExamListScreen(viewModel: ExamViewModel) {
+    BackHandler {
+        viewModel.navigateTo(ScreenDestination.StudentDashboard)
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.loadExams()
+    }
+
     var selectedTab by remember { mutableStateOf(0) }
-    val tabs = listOf("Aktif (1)", "Mendatang (1)", "Riwayat (1)")
-    val exams = viewModel.exams
+    val exams by viewModel.exams.collectAsState()
+
+    val activeCount = exams.count { it.status == ExamStatus.ACTIVE }
+    val scheduledCount = exams.count { it.status == ExamStatus.SCHEDULED }
+    val endedCount = exams.count { it.status == ExamStatus.ENDED }
+
+    val tabs = listOf(
+        "Aktif ($activeCount)",
+        "Mendatang ($scheduledCount)",
+        "Riwayat ($endedCount)"
+    )
 
     val filteredExams = when (selectedTab) {
         0 -> exams.filter { it.status == ExamStatus.ACTIVE }
@@ -50,6 +69,11 @@ fun ExamListScreen(viewModel: ExamViewModel) {
                 navigationIcon = {
                     IconButton(onClick = { viewModel.navigateTo(ScreenDestination.StudentDashboard) }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Kembali")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { viewModel.loadExams() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Muat Ulang")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
@@ -76,16 +100,41 @@ fun ExamListScreen(viewModel: ExamViewModel) {
                 }
             }
 
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(filteredExams) { exam ->
-                    ExamCardItem(exam = exam) {
-                        viewModel.selectExam(exam)
-                        viewModel.navigateTo(ScreenDestination.ExamDetail(exam))
+            if (filteredExams.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Default.EventBusy,
+                            contentDescription = null,
+                            tint = Slate400,
+                            modifier = Modifier.size(56.dp)
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "Tidak ada ujian pada kategori ini",
+                            color = Slate600,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(filteredExams) { exam ->
+                        ExamCardItem(exam = exam) {
+                            viewModel.selectExam(exam)
+                            viewModel.navigateTo(ScreenDestination.ExamDetail(exam))
+                        }
                     }
                 }
             }
@@ -172,6 +221,10 @@ private fun ExamCardItem(exam: Exam, onClick: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExamDetailScreen(viewModel: ExamViewModel, exam: Exam) {
+    BackHandler {
+        viewModel.navigateTo(ScreenDestination.ExamList)
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -280,6 +333,10 @@ private fun DetailRow(label: String, value: String) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExamInstructionScreen(viewModel: ExamViewModel, exam: Exam) {
+    BackHandler {
+        viewModel.navigateTo(ScreenDestination.ExamDetail(exam))
+    }
+
     val context = LocalContext.current
     val activity = context as? Activity
     var isAgreed by remember { mutableStateOf(false) }
@@ -534,6 +591,10 @@ fun ExamResultScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudentProfileScreen(viewModel: ExamViewModel) {
+    BackHandler {
+        viewModel.navigateTo(ScreenDestination.StudentDashboard)
+    }
+
     val user by viewModel.currentUser.collectAsState()
     val report by viewModel.deviceReport.collectAsState()
 

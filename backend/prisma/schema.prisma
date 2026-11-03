@@ -1,0 +1,269 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Role {
+  id          String  @id
+  name        String
+  description String?
+  users       User[]
+
+  @@map("roles")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  roleId        String    @map("role_id")
+  username      String    @unique
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  fullName      String    @map("full_name")
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  role          Role      @relation(fields: [roleId], references: [id])
+  student       Student?
+  lecturer      Lecturer?
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+model StudyProgram {
+  id       String    @id @default(uuid())
+  code     String    @unique
+  name     String
+  faculty  String
+  courses  Course[]
+  students Student[]
+
+  @@map("study_programs")
+}
+
+model Course {
+  id             String         @id @default(uuid())
+  studyProgramId String         @map("study_program_id")
+  code           String
+  name           String
+  semester       Int
+  studyProgram   StudyProgram   @relation(fields: [studyProgramId], references: [id])
+  questionBanks  QuestionBank[]
+  exams          Exam[]
+
+  @@map("courses")
+}
+
+model Student {
+  id             String            @id @default(uuid())
+  userId         String            @unique @map("user_id")
+  nim            String            @unique
+  studyProgramId String            @map("study_program_id")
+  className      String            @map("class_name")
+  generationYear Int               @map("generation_year")
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studyProgram   StudyProgram      @relation(fields: [studyProgramId], references: [id])
+  devices        Device[]
+  assignments    ExamAssignment[]
+  attempts       ExamAttempt[]
+
+  @@map("students")
+}
+
+model Lecturer {
+  id            String         @id @default(uuid())
+  userId        String         @unique @map("user_id")
+  nip           String         @unique
+  department    String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questionBanks QuestionBank[]
+  exams         Exam[]
+
+  @@map("lecturers")
+}
+
+model Device {
+  id             String        @id @default(uuid())
+  studentId      String        @map("student_id")
+  installationId String        @map("installation_id")
+  deviceModel    String?       @map("device_model")
+  androidVersion String?       @map("android_version")
+  appVersion     String?       @map("app_version")
+  isTrusted      Boolean       @default(true) @map("is_trusted")
+  firstSeen      DateTime      @default(now()) @map("first_seen")
+  lastSeen       DateTime      @default(now()) @map("last_seen")
+  student        Student       @relation(fields: [studentId], references: [id])
+  attempts       ExamAttempt[]
+
+  @@unique([studentId, installationId])
+  @@map("devices")
+}
+
+model QuestionBank {
+  id         String     @id @default(uuid())
+  lecturerId String     @map("lecturer_id")
+  courseId   String     @map("course_id")
+  title      String
+  category   String?
+  createdAt  DateTime   @default(now()) @map("created_at")
+  lecturer   Lecturer   @relation(fields: [lecturerId], references: [id])
+  course     Course     @relation(fields: [courseId], references: [id])
+  questions  Question[]
+
+  @@map("question_banks")
+}
+
+model Question {
+  id             String            @id @default(uuid())
+  questionBankId String?           @map("question_bank_id")
+  type           String            // MULTIPLE_CHOICE, ESSAY
+  questionText   String            @map("question_text")
+  difficulty     String            @default("MEDIUM") // EASY, MEDIUM, HARD
+  scoreWeight    Float             @default(1.0) @map("score_weight")
+  createdAt      DateTime          @default(now()) @map("created_at")
+  questionBank   QuestionBank?     @relation(fields: [questionBankId], references: [id], onDelete: Cascade)
+  options        QuestionOption[]
+  examQuestions  ExamQuestion[]
+  answers        Answer[]
+
+  @@map("questions")
+}
+
+model QuestionOption {
+  id         String    @id @default(uuid())
+  questionId String    @map("question_id")
+  label      String    // A, B, C, D, E
+  optionText String    @map("option_text")
+  isCorrect  Boolean   @default(false) @map("is_correct")
+  question   Question  @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answers    Answer[]
+
+  @@map("question_options")
+}
+
+model Exam {
+  id                  String           @id @default(uuid())
+  courseId            String           @map("course_id")
+  lecturerId          String           @map("lecturer_id")
+  title               String
+  description         String?
+  durationMinutes     Int              @map("duration_minutes")
+  startTime           DateTime         @map("start_time")
+  endTime             DateTime         @map("end_time")
+  passingGrade        Float            @default(60.0) @map("passing_grade")
+  randomQuestions     Boolean          @default(true) @map("random_questions")
+  randomOptions       Boolean          @default(true) @map("random_options")
+  allowBackNavigation Boolean          @default(true) @map("allow_back_navigation")
+  showResult          Boolean          @default(true) @map("show_result")
+  antiCheatingEnabled Boolean          @default(true) @map("anti_cheating_enabled")
+  status              String           @default("SCHEDULED") // DRAFT, SCHEDULED, ACTIVE, ENDED, ARCHIVED
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @default(now()) @updatedAt @map("updated_at")
+  course              Course           @relation(fields: [courseId], references: [id])
+  lecturer            Lecturer         @relation(fields: [lecturerId], references: [id])
+  examQuestions       ExamQuestion[]
+  assignments         ExamAssignment[]
+  attempts            ExamAttempt[]
+
+  @@index([status, startTime, endTime])
+  @@map("exams")
+}
+
+model ExamQuestion {
+  id         String   @id @default(uuid())
+  examId     String   @map("exam_id")
+  questionId String   @map("question_id")
+  orderIndex Int      @map("order_index")
+  exam       Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, questionId])
+  @@map("exam_questions")
+}
+
+model ExamAssignment {
+  id          String   @id @default(uuid())
+  examId      String   @map("exam_id")
+  studentId   String   @map("student_id")
+  maxAttempts Int      @default(1) @map("max_attempts")
+  exam        Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, studentId])
+  @@map("exam_assignments")
+}
+
+model ExamAttempt {
+  id             String      @id @default(uuid())
+  examId         String      @map("exam_id")
+  studentId      String      @map("student_id")
+  deviceId       String?     @map("device_id")
+  state          String      @default("NOT_STARTED") // NOT_STARTED, IN_PROGRESS, SUBMITTED
+  startedAt      DateTime?   @map("started_at")
+  submittedAt    DateTime?   @map("submitted_at")
+  randomSeed     BigInt      @map("random_seed")
+  violationScore Int         @default(0) @map("violation_score")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  exam           Exam        @relation(fields: [examId], references: [id])
+  student        Student     @relation(fields: [studentId], references: [id])
+  device         Device?     @relation(fields: [deviceId], references: [id])
+  answers        Answer[]
+  violations     Violation[]
+
+  @@index([studentId, examId])
+  @@map("exam_attempts")
+}
+
+model Answer {
+  id               String          @id @default(uuid())
+  attemptId        String          @map("attempt_id")
+  questionId       String          @map("question_id")
+  selectedOptionId String?         @map("selected_option_id")
+  essayText        String?         @map("essay_text")
+  isFlagged        Boolean         @default(false) @map("is_flagged")
+  manualScore      Float?          @map("manual_score")
+  savedAt          DateTime        @default(now()) @map("saved_at")
+  attempt          ExamAttempt     @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question         Question        @relation(fields: [questionId], references: [id])
+  selectedOption   QuestionOption? @relation(fields: [selectedOptionId], references: [id])
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId])
+  @@map("answers")
+}
+
+model Violation {
+  id             String      @id @default(uuid())
+  attemptId      String      @map("attempt_id")
+  eventType      String      @map("event_type")
+  severity       String      // LOW, MEDIUM, HIGH, CRITICAL
+  scoreIncrement Int         @map("score_increment")
+  durationMs     BigInt      @default(0) @map("duration_ms")
+  metadata       String?     // Stored as stringified JSON in SQLite
+  createdAt      DateTime    @default(now()) @map("created_at")
+  attempt        ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@index([attemptId, createdAt(sort: Desc)])
+  @@map("violations")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?  @map("actor_id")
+  actorRole  String   @map("actor_role")
+  action     String
+  targetType String?  @map("target_type")
+  targetId   String?  @map("target_id")
+  ipAddress  String?  @map("ip_address")
+  metadata   String?  // Stored as stringified JSON
+  createdAt  DateTime @default(now()) @map("created_at")
+  actor      User?    @relation(fields: [actorId], references: [id])
+
+  @@index([actorId, createdAt(sort: Desc)])
+  @@map("audit_logs")
+}

@@ -44,8 +44,8 @@ class ExamViewModel(application: Application) : AndroidViewModel(application) {
             fullName = "Budi Pratama",
             role = UserRole.STUDENT,
             identifier = "202400101",
-            studyProgram = "S1 Teknik Informatika",
-            className = "TI-3A"
+            studyProgram = "D3 Keperawatan",
+            className = "KLP-A"
         )
     )
     val currentUser: StateFlow<User> = _currentUser.asStateFlow()
@@ -55,8 +55,53 @@ class ExamViewModel(application: Application) : AndroidViewModel(application) {
     val deviceReport: StateFlow<DeviceSecurityReport> = _deviceReport.asStateFlow()
 
     // Exams
-    val exams: List<Exam> = repository.getAssignedExams()
+    private val _exams = MutableStateFlow<List<Exam>>(emptyList())
+    val exams: StateFlow<List<Exam>> = _exams.asStateFlow()
     val isOnline: StateFlow<Boolean> = repository.isOnline
+
+    fun loadExams() {
+        viewModelScope.launch {
+            try {
+                val response = com.example.data.remote.ApiClient.apiService.getExams()
+                if (response.isSuccessful && response.body()?.status == "success") {
+                    val remoteExams = response.body()?.data ?: emptyList()
+                    _exams.value = remoteExams.map { dto ->
+                        Exam(
+                            id = dto.id,
+                            title = dto.title,
+                            courseCode = dto.course,
+                            courseName = dto.course,
+                            lecturerName = dto.lecturer,
+                            durationMinutes = dto.durationMinutes,
+                            startTime = parseDateToMillis(dto.startTime),
+                            endTime = parseDateToMillis(dto.endTime),
+                            questionCount = dto.questionCount ?: 0,
+                            passingGrade = 60.0,
+                            instructions = "Ujian dimonitor ketat oleh Anti-Cheating Engine.",
+                            status = when (dto.status) {
+                                "SCHEDULED" -> ExamStatus.SCHEDULED
+                                "ENDED" -> ExamStatus.ENDED
+                                else -> ExamStatus.ACTIVE
+                            }
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                // Fallback to offline local mockup or cache if needed
+                e.printStackTrace()
+            }
+        }
+    }
+
+    private fun parseDateToMillis(isoString: String): Long {
+        return try {
+            val format = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US)
+            format.timeZone = java.util.TimeZone.getTimeZone("UTC")
+            format.parse(isoString)?.time ?: System.currentTimeMillis()
+        } catch(e: Exception) {
+            System.currentTimeMillis()
+        }
+    }
 
     // Active Exam Session State
     private val _selectedExam = MutableStateFlow<Exam?>(null)
@@ -82,6 +127,21 @@ class ExamViewModel(application: Application) : AndroidViewModel(application) {
     val antiCheatingEngine = AntiCheatingEngine(
         studentName = _currentUser.value.fullName,
         onViolationLogged = { violation ->
+            currentAttemptId?.let { attemptId ->
+                viewModelScope.launch {
+                    try {
+                        com.example.data.remote.ApiClient.apiService.reportViolation(
+                            attemptId,
+                            com.example.data.remote.ViolationRequest(
+                                eventType = violation.eventType,
+                                severity = violation.severity.name,
+                                scoreIncrement = violation.scoreIncrement,
+                                metadata = violation.description
+                            )
+                        )
+                    } catch(e: Exception) { e.printStackTrace() }
+                }
+            }
             viewModelScope.launch {
                 repository.saveViolationLocally(violation)
             }
@@ -124,43 +184,77 @@ class ExamViewModel(application: Application) : AndroidViewModel(application) {
         _deviceReport.value = DeviceSecurityChecker.checkDevice(getApplication())
     }
 
-    fun switchUserRole(role: UserRole) {
-        when (role) {
-            UserRole.STUDENT -> {
-                _currentUser.value = User(
-                    id = "usr_std_01",
-                    username = "202400101",
-                    fullName = "Budi Pratama",
-                    role = UserRole.STUDENT,
-                    identifier = "202400101",
-                    studyProgram = "S1 Teknik Informatika",
-                    className = "TI-3A"
+    fun logout() {
+        com.example.data.remote.ApiClient.authToken = null
+        _currentUser.value = User(
+            id = "",
+            username = "",
+            fullName = "",
+            role = UserRole.STUDENT,
+            identifier = ""
+        )
+        _currentScreen.value = ScreenDestination.Login
+    }
+
+    fun loginWithApi(username: String, password: String, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val response = com.example.data.remote.ApiClient.apiService.login(
+                    com.example.data.remote.LoginRequest(username, password)
                 )
-                _currentScreen.value = ScreenDestination.StudentDashboard
+                if (response.isSuccessful) {
+                    val data = response.body()
+                    if (data?.status == "success" && data.user != null) {
+                        // Store signed JWT token securely in ApiClient
+                        com.example.data.remote.ApiClient.authToken = data.token
+                        val newRole = when(data.user.role) {
+                            "STUDENT" -> UserRole.STUDENT
+                            "LECTURER" -> UserRole.LECTURER
+                            else -> UserRole.ADMIN
+                        }
+                        
+                        _currentUser.value = User(
+                            id = data.user.id,
+                            username = data.user.username,
+                            fullName = data.user.name,
+                            role = newRole,
+                            identifier = data.user.username,
+                            studyProgram = data.user.studyProgram ?: "D3 Keperawatan",
+                            className = data.user.className ?: "KLP-A"
+                        )
+                        
+                        _currentScreen.value = if (newRole == UserRole.STUDENT) {
+                            loadExams()
+                            ScreenDestination.StudentDashboard
+                        } else {
+                            ScreenDestination.LecturerDashboard
+                        }
+                        onResult(true, "Login berhasil")
+                    } else {
+                        onResult(false, data?.message ?: "Login gagal")
+                    }
+                } else {
+                    onResult(false, "Server error: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                onResult(false, "Gagal terhubung ke server: ${e.message}")
             }
-            UserRole.LECTURER -> {
-                _currentUser.value = User(
-                    id = "usr_lec_01",
-                    username = "19800512",
-                    fullName = "Dr. Ir. Hendra Gunawan, M.T.",
-                    role = UserRole.LECTURER,
-                    identifier = "198005122005011002",
-                    studyProgram = "Teknik Informatika",
-                    className = "Dosen Pengampu"
+        }
+    }
+
+    fun registerWithApi(fullName: String, username: String, studyProgram: String, className: String, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val response = com.example.data.remote.ApiClient.apiService.register(
+                    com.example.data.remote.RegisterRequest(fullName, username, studyProgram, className)
                 )
-                _currentScreen.value = ScreenDestination.LecturerDashboard
-            }
-            UserRole.ADMIN -> {
-                _currentUser.value = User(
-                    id = "usr_adm_01",
-                    username = "admin_puskom",
-                    fullName = "Super Administrator Puskom",
-                    role = UserRole.ADMIN,
-                    identifier = "ADM-001",
-                    studyProgram = "Biro Akademik & Puskom",
-                    className = "Administrator"
-                )
-                _currentScreen.value = ScreenDestination.LecturerDashboard
+                if (response.isSuccessful && response.body()?.status == "success") {
+                    onResult(true, response.body()?.message ?: "Pendaftaran berhasil!")
+                } else {
+                    onResult(false, response.body()?.message ?: "Gagal mendaftar.")
+                }
+            } catch (e: Exception) {
+                onResult(false, "Gagal terhubung ke server: ${e.message}")
             }
         }
     }
@@ -176,21 +270,52 @@ class ExamViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private var currentAttemptId: String? = null
+
     // Exam Flow Operations
     fun selectExam(exam: Exam) {
         _selectedExam.value = exam
-        _questions.value = repository.getExamQuestions(exam.id)
         _currentQuestionIndex.value = 0
         _answers.value = emptyMap()
     }
 
     fun startExam(activity: Activity, exam: Exam) {
         selectExam(exam)
-        lockdownManager = LockdownManager(activity)
-        lockdownManager?.enableLockdown()
-        antiCheatingEngine.startMonitoring()
-        timerManager.startTimer(exam.durationMinutes)
-        _currentScreen.value = ScreenDestination.ExamTaking(exam)
+        
+        viewModelScope.launch {
+            try {
+                val response = com.example.data.remote.ApiClient.apiService.startExam(exam.id)
+                if (response.isSuccessful && response.body()?.status == "success") {
+                    val data = response.body()
+                    currentAttemptId = data?.attemptId
+                    
+                    val remoteQuestions = data?.questions?.mapIndexed { index, qDto ->
+                        Question(
+                            id = qDto.id,
+                            number = index + 1,
+                            text = qDto.text,
+                            type = QuestionType.MULTIPLE_CHOICE,
+                            options = qDto.options.map { oDto ->
+                                QuestionOption(id = oDto.id, label = oDto.label, text = oDto.text)
+                            }
+                        )
+                    } ?: emptyList()
+                    
+                    _questions.value = remoteQuestions
+                } else {
+                    _questions.value = repository.getExamQuestions(exam.id) // Fallback to mock
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _questions.value = repository.getExamQuestions(exam.id) // Fallback to mock
+            }
+            
+            lockdownManager = LockdownManager(activity)
+            lockdownManager?.enableLockdown()
+            antiCheatingEngine.startMonitoring()
+            timerManager.startTimer(exam.durationMinutes)
+            _currentScreen.value = ScreenDestination.ExamTaking(exam)
+        }
     }
 
     fun answerMultipleChoice(questionId: String, optionId: String) {
@@ -200,6 +325,18 @@ class ExamViewModel(application: Application) : AndroidViewModel(application) {
             savedAt = System.currentTimeMillis()
         )
         _answers.value = _answers.value + (questionId to updated)
+
+        // API Call
+        currentAttemptId?.let { attemptId ->
+            viewModelScope.launch {
+                try {
+                    com.example.data.remote.ApiClient.apiService.submitAnswer(
+                        attemptId, 
+                        com.example.data.remote.AnswerRequest(questionId, optionId)
+                    )
+                } catch(e: Exception) { e.printStackTrace() }
+            }
+        }
 
         viewModelScope.launch {
             repository.saveAnswerLocally(
@@ -290,40 +427,41 @@ class ExamViewModel(application: Application) : AndroidViewModel(application) {
         _isSubmitConfirmationVisible.value = false
         _isQuestionPaletteOpen.value = false
 
-        // Compute objective score
-        val questionsList = _questions.value
-        var earnedObjectiveScore = 0.0
-        var totalPossibleScore = 0.0
-
-        for (q in questionsList) {
-            totalPossibleScore += q.maxScore
-            if (q.type == QuestionType.MULTIPLE_CHOICE) {
-                val studentAns = _answers.value[q.id]?.selectedOptionId
-                val correctOption = q.options.find { it.isCorrect }?.id
-                if (studentAns != null && studentAns == correctOption) {
-                    earnedObjectiveScore += q.maxScore
+        val attemptId = currentAttemptId
+        if (attemptId != null) {
+            viewModelScope.launch {
+                try {
+                    val response = com.example.data.remote.ApiClient.apiService.submitExam(attemptId)
+                    if (response.isSuccessful && response.body()?.status == "success") {
+                        val result = response.body()?.data
+                        _currentScreen.value = ScreenDestination.ExamResult(
+                            exam = exam,
+                            score = result?.finalScore ?: 0.0,
+                            total = 100.0,
+                            grade = result?.grade ?: "C"
+                        )
+                        return@launch
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
-            } else {
-                // Essay is marked for review
-                earnedObjectiveScore += (q.maxScore * 0.8) // Simulated partial credit
+
+                // Fallback result display
+                _currentScreen.value = ScreenDestination.ExamResult(
+                    exam = exam,
+                    score = 0.0,
+                    total = 100.0,
+                    grade = "-"
+                )
             }
+        } else {
+            _currentScreen.value = ScreenDestination.ExamResult(
+                exam = exam,
+                score = 0.0,
+                total = 100.0,
+                grade = "-"
+            )
         }
-
-        val percentage = (earnedObjectiveScore / totalPossibleScore * 100).coerceIn(0.0, 100.0)
-        val grade = when {
-            percentage >= 85.0 -> "A"
-            percentage >= 75.0 -> "B"
-            percentage >= 65.0 -> "C"
-            percentage >= 50.0 -> "D"
-            else -> "E"
-        }
-
-        _currentScreen.value = ScreenDestination.ExamResult(
-            exam = exam,
-            score = earnedObjectiveScore,
-            total = totalPossibleScore,
-            grade = grade
-        )
     }
 
     // Google Form Parser Actions

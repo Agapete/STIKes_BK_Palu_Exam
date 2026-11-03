@@ -39,13 +39,13 @@ fun LecturerDashboardScreen(viewModel: ExamViewModel) {
             TopAppBar(
                 title = {
                     Column {
-                        Text("Dashboard Dosen & Pengawas", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                        Text("Dashboard Dosen & Pengawas", fontWeight = FontWeight.Bold, fontSize = 17.sp, color = Color.Black)
                         Text("UTS Algoritma & Struktur Data (TI-3A)", fontSize = 12.sp, color = Slate500)
                     }
                 },
                 actions = {
-                    TextButton(onClick = { viewModel.switchUserRole(UserRole.STUDENT) }) {
-                        Text("Kembali ke Mahasiswa", fontWeight = FontWeight.Bold, color = NavyPrimary)
+                    TextButton(onClick = { viewModel.logout() }) {
+                        Text("Keluar", fontWeight = FontWeight.Bold, color = NavyPrimary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
@@ -58,6 +58,19 @@ fun LecturerDashboardScreen(viewModel: ExamViewModel) {
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            Surface(
+                color = Color(0xFFFEF2F2),
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                shape = RoundedCornerShape(8.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFCA5A5))
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text("⚠️ VERSI PROTOTIPE", color = Color(0xFFDC2626), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("Data di aplikasi Android ini hanya simulasi offline. Untuk Live Monitoring asli, pengaturan soal, dan rekap nilai, HARAP GUNAKAN WEB DASHBOARD di Laptop/PC Anda.", color = Color(0xFF991B1B), fontSize = 12.sp)
+                }
+            }
+
             ScrollableTabRow(
                 selectedTabIndex = activeTab,
                 containerColor = Color.White,

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
+import { API_BASE, setAuthToken } from './apiConfig';
 
 interface LoginPageProps {
-  onLoginSuccess: () => void;
+  onLoginSuccess: (user: any) => void;
   onBack: () => void;
 }
 
@@ -10,13 +11,26 @@ export default function LoginPage({ onLoginSuccess, onBack }: LoginPageProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Dummy login check for Admin
-    if (username === 'admin' && password === 'admin123') {
-      onLoginSuccess();
-    } else {
-      setError('Username atau password salah. Coba: admin / admin123');
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        if (data.token) {
+          setAuthToken(data.token);
+        }
+        onLoginSuccess(data.user);
+      } else {
+        setError(data.message || 'Login gagal!');
+      }
+    } catch (err) {
+      setError('Gagal menghubungi server. Pastikan Backend menyala.');
     }
   };
 

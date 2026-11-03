@@ -56,8 +56,8 @@ data class User(
     val fullName: String,
     val role: UserRole,
     val identifier: String, // NIM or NIP
-    val studyProgram: String = "Teknik Informatika",
-    val className: String = "TI-3A"
+    val studyProgram: String = "D3 Keperawatan",
+    val className: String = "KLP-A"
 )
 
 data class QuestionOption(
